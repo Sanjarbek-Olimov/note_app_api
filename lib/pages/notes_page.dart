@@ -2,9 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import '../services/hive_service.dart';
-import '../services/notes_model.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:note_app_api/services/hive_service.dart';
+import 'package:note_app_api/models/notes_model.dart';
+import 'package:note_app_api/services/http_service.dart';
 
 class NotesPage extends StatefulWidget {
   static const String id = "notes_page";
@@ -16,38 +17,51 @@ class NotesPage extends StatefulWidget {
 }
 
 class _NotesPageState extends State<NotesPage> {
+  bool isLoading = true;
   List<Note> listofNotes = [];
   List<Note> listofNotestoDelete = [];
   TextEditingController noteController = TextEditingController();
 
   // #create_notes
-  void _createNotes() {
+  void _createNotes() async{
     String text = noteController.text.toString().trim();
-    listofNotes.add(Note(date: DateTime.now().toString(), notes: text));
-    listofNotes.sort((a, b) => b.date!.compareTo(a.date!));
-    _storeNotes();
+    listofNotes.add(Note(createdAt: DateTime.now().toString(), content: text));
+    listofNotes.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+    await Network.POST(Network.API_CREATE, Network.paramsCreate(Note(createdAt: DateTime.now().toString(), content: text)));
+    setState(() {});
+    _apiNotesList();
   }
 
-  // #store_notes
-  void _storeNotes() {
-    String notes = Note.encode(listofNotes);
-    HiveDB.storeNotes(notes);
+  // #load_notes
+  void _apiNotesList() async {
+    Network.GET(Network.API_LIST, Network.paramsEmpty())
+        .then((response){
+          setState(() {
+            listofNotes = Note.decode(response!);
+            listofNotes.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+            isLoading = false;
+          });
+    });
   }
 
-  // #laod_everything_saved
-  void loadEverything() {
-    if(HiveDB.loadNotes()!=null){
-      listofNotes = Note.decode(HiveDB.loadNotes()!);
-    }
-    listofNotes.sort((a, b) => b.date!.compareTo(a.date!));
+  // #update_notes
+  void _apiUpdateNote(Note note) async {
+    await Network.PUT(Network.API_UPDATE + note.id.toString(),
+            Network.paramsUpdate(note));
+    _apiNotesList();
+  }
+
+  // #delete_notes
+  void _apiDeleteNote(Note note) async{
+    await Network.DEL(Network.API_DELETE + note.id.toString(), Network.paramsEmpty());
+    _apiNotesList();
   }
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    loadEverything();
-    setState(() {});
+    _apiNotesList();
   }
 
   // #first_alert_dialog
@@ -216,7 +230,7 @@ class _NotesPageState extends State<NotesPage> {
                     )),
               ],
             ),
-            body: listofNotes.isEmpty
+            body: isLoading?const Center(child: CircularProgressIndicator.adaptive()):listofNotes.isEmpty
                 ? Center(
                     child: Text(
                       "center".tr(),
@@ -265,8 +279,8 @@ class _NotesPageState extends State<NotesPage> {
                                         i++) {
                                       listofNotes.removeWhere((element) =>
                                           element == listofNotestoDelete[i]);
+                                      _apiDeleteNote(listofNotestoDelete[i]);
                                     }
-                                    _storeNotes();
                                     enabled = true;
                                     isLongPressed = false;
                                     selected = 0;
@@ -319,7 +333,7 @@ class _NotesPageState extends State<NotesPage> {
                         content: TextField(
                           maxLines: 10,
                           controller: noteController
-                            ..text = listofNotes[index].notes!,
+                            ..text = listofNotes[index].content!,
                           decoration: const InputDecoration(
                               contentPadding: EdgeInsets.zero,
                               hintText: "Enter your note!",
@@ -339,12 +353,12 @@ class _NotesPageState extends State<NotesPage> {
                               )),
                           TextButton(
                               onPressed: () {
-                                listofNotes[index].notes =
+                                listofNotes[index].content =
                                     noteController.text;
-                                listofNotes[index].date =
+                                listofNotes[index].createdAt =
                                     DateTime.now().toString();
-                                _storeNotes();
-                                loadEverything();
+                                _apiUpdateNote(listofNotes[index]);
+                                listofNotes.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
                                 Navigator.pop(context);
                                 noteController.clear();
                                 setState(() {});
@@ -395,9 +409,8 @@ class _NotesPageState extends State<NotesPage> {
                   selected = 1;
                 });
                 _androidDialogToDelete(() {
+                  _apiDeleteNote(listofNotes[index]);
                   listofNotes.removeAt(index);
-                  _storeNotes();
-                  loadEverything();
                   setState(() {});
                   Navigator.pop(this.context);
                 });
@@ -421,7 +434,6 @@ class _NotesPageState extends State<NotesPage> {
                   isLongPressed = false;
                   selected = 0;
                 });
-                loadEverything();
                 return false;
               } else {
                 if (Platform.isAndroid) {
@@ -446,7 +458,7 @@ class _NotesPageState extends State<NotesPage> {
                       width: 10,
                     ),
                     Text(
-                      listofNotes[index].date!.substring(0, 16),
+                      listofNotes[index].createdAt.toString().substring(0, 16),
                     ),
                   ],
                 ),
@@ -466,7 +478,7 @@ class _NotesPageState extends State<NotesPage> {
                     ),
                     Expanded(
                         child: Text(
-                      listofNotes[index].notes!,
+                      listofNotes[index].content!,
                       style: const TextStyle(fontSize: 20),
                     )),
                     isLongPressed

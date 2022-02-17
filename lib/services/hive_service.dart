@@ -19,13 +19,4 @@ class HiveDB{
   static String loadLang(){
     return box.get("lang", defaultValue: "EN");
   }
-
-  static void storeNotes(String listofNotes) async{
-    box.put("notes", listofNotes);
-  }
-
-  static String? loadNotes(){
-    return box.get("notes");
-  }
-
 }

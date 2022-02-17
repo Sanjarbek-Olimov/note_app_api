@@ -2,8 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:shared_preference/pages/notes_page.dart';
-import 'package:shared_preference/services/hive_service.dart';
+import 'package:note_app_api/pages/notes_page.dart';
+import 'package:note_app_api/services/hive_service.dart';
 
 void main() async{
   await Hive.initFlutter();

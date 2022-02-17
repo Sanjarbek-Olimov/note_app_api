@@ -1,7 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.shared_preference">
+    package="com.example.note_app_api">
+    <uses-permission android:name="android.permission.INTERNET" />
    <application
-        android:label="Note App Hive"
+        android:label="Note App Api"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
